@@ -35,47 +35,50 @@ public class GeolocationPlugin extends CordovaPlugin {
   @Override
   public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
     Log.i(TAG, "插件调用");
-    JSONObject options = new JSONObject();
 
-    requestArgs = args;
-    context = callbackContext;
+    this.requestArgs = args;
+    this.context = callbackContext;
 
     if (action.equals("getCurrentPosition")) {
       getPermission(GET_CURRENT_POSITION);
-      try {
-        options = args.getJSONObject(0);
-      } catch (JSONException e) {
-        Log.v(TAG, "options 未传入");
-      }
-      return getCurrentPosition(options, callbackContext);
+      return getCurrentPosition(args, callbackContext);
     } else if (action.equals("watchPosition")) {
       getPermission(WATCH_POSITION);
-      try {
-        options = args.getJSONObject(0);
-      } catch (JSONException e) {
-        Log.v(TAG, "options 未传入");
-      }
-      int watchId = args.getInt(1);
-      return watchPosition(options, watchId, callbackContext);
+      return watchPosition(args, callbackContext);
     } else if (action.equals("clearWatch")) {
       getPermission(CLEAR_WATCH);
-      int watchId = args.getInt(0);
-      return clearWatch(watchId, callbackContext);
+      return clearWatch(args, callbackContext);
     }
     return false;
   }
 
-  private boolean clearWatch(int watchId, CallbackContext callback) {
+  private boolean clearWatch(JSONArray args, CallbackContext callback) {
     Log.i(TAG, "停止监听");
+    int watchId = 0;
+    try {
+      watchId = args.getInt(0);
+    } catch (JSONException e) {
+      Log.v(TAG, "watchId 未传入");
+    }
     BDGeolocation geolocation = store.get(watchId);
+
     store.remove(watchId);
     geolocation.clearWatch();
     callback.success();
     return true;
   }
 
-  private boolean watchPosition(JSONObject options, int watchId, final CallbackContext callback) {
+  private boolean watchPosition(JSONArray args, final CallbackContext callback) {
     Log.i(TAG, "监听位置变化");
+    JSONObject options = new JSONObject();
+    int watchId = 0;
+    try {
+      options = args.getJSONObject(0);
+      watchId = args.getInt(1);
+    } catch (JSONException e) {
+      Log.v(TAG, "options 未传入");
+    }
+
     Context ctx = cordova.getActivity().getApplicationContext();
     PositionOptions positionOpts = new PositionOptions(options);
     BDGeolocation geolocation = new BDGeolocation(ctx);
@@ -91,8 +94,14 @@ public class GeolocationPlugin extends CordovaPlugin {
     });
   }
 
-  private boolean getCurrentPosition(JSONObject options, final CallbackContext callback) {
+  private boolean getCurrentPosition(JSONArray args, final CallbackContext callback) {
     Log.i(TAG, "请求当前地理位置");
+    JSONObject options = new JSONObject();
+    try {
+      options = args.getJSONObject(0);
+    } catch (JSONException e) {
+      Log.v(TAG, "options 未传入");
+    }
     Context ctx = cordova.getActivity().getApplicationContext();
     PositionOptions positionOpts = new PositionOptions(options);
     BDGeolocation geolocation = new BDGeolocation(ctx);
@@ -110,7 +119,7 @@ public class GeolocationPlugin extends CordovaPlugin {
    * int requestCode Action代码
    */
   public void getPermission(int requestCode){
-    if(!hasPermisssion()){
+    if(!hasPermisssion()) {
       PermissionHelper.requestPermissions(this, requestCode, permissions);
     }
   }
@@ -139,13 +148,13 @@ public class GeolocationPlugin extends CordovaPlugin {
            switch(requestCode)
            {
                case GET_CURRENT_POSITION:
-                   getCurrentPosition(this.requestArgs.getJSONObject(0), this.context);
+                   getCurrentPosition(this.requestArgs, this.context);
                    break;
                case WATCH_POSITION:
-                   watchPosition(this.requestArgs.getJSONObject(0), this.requestArgs.getInt(1), this.context);
+                   watchPosition(this.requestArgs, this.context);
                    break;
                case CLEAR_WATCH:
-                   clearWatch(this.requestArgs.getInt(0), this.context);
+                   clearWatch(this.requestArgs, this.context);
                    break;
            }
        }
@@ -169,7 +178,6 @@ public class GeolocationPlugin extends CordovaPlugin {
     * We override this so that we can access the permissions variable, which no longer exists in
     * the parent class, since we can't initialize it reliably in the constructor!
     */
-
    public void requestPermissions(int requestCode)
    {
        PermissionHelper.requestPermissions(this, requestCode, permissions);
